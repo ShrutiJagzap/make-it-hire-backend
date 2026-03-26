@@ -1,0 +1,34 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: m@hadev2005
+      MYSQL_DATABASE: make_it_hired
+    ports: ["3306:3306"]
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  python_model:
+    build: ./python_model
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./python_model:/app
+    depends_on:
+      - mysql
+
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/make_it_hired
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: m@hadev2005
+    depends_on:
+      - mysql
+      - python_model
+
+volumes:
+  mysql-data:
