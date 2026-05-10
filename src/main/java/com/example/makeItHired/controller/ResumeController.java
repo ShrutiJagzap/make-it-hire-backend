@@ -6,9 +6,11 @@ import com.example.makeItHired.entity.User;
 import com.example.makeItHired.repository.ResumeRepository;
 import com.example.makeItHired.repository.UserRepository;
 import com.example.makeItHired.service.FileStorageService;
+import com.example.makeItHired.service.FirebaseStorageService;
 import com.example.makeItHired.service.PythonModelClient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +29,9 @@ import java.util.Optional;
 @RequestMapping("/api/resumes")
 @CrossOrigin(origins = "http://localhost:5173")
 public class ResumeController {
+
+    @Autowired
+    private FirebaseStorageService firebaseStorageService;
     private final FileStorageService fileStorage;
     private final ResumeRepository resumeRepo;
     private final UserRepository userRepo;
@@ -41,61 +46,106 @@ public class ResumeController {
         this.objectMapper = new ObjectMapper();
     }
 
+//    @PostMapping("/upload")
+//    public ResponseEntity<?> uploadResume(
+//            @RequestParam("file") MultipartFile file,
+//            @RequestParam(value = "userId", required = false) Long userId) {
+//        try {
+//            System.out.println("=== RESUME UPLOAD STARTED ===");
+//            System.out.println("Filename: " + file.getOriginalFilename());
+//            System.out.println("Size: " + file.getSize());
+//            System.out.println("UserID: " + userId);
+//            //validate user
+//            if(userId == null) {
+//                System.out.println("ERROR: User ID is null");
+//                return ResponseEntity.badRequest().body(Map.of("message", "User ID is required"));
+//            }
+//            Optional<User> userOpt = userRepo.findById(userId);
+//            if (userOpt.isEmpty()) {
+//                System.out.println("ERROR: User not found with ID: " + userId);
+//                return ResponseEntity.badRequest().body(Map.of("message", "User not found"));
+//            }
+//
+//            //1. Store file
+//            Path stored = fileStorage.storeFile(file,"resumes");
+//            System.out.println("File stored at: " + stored.toString());
+//
+//            //2. Save resume metadata
+//            Resume resume = new Resume();
+//            resume.setFilename(file.getOriginalFilename());
+//            resume.setFilepath(stored.toString());
+//            resume.setUserId(userId);
+//            resume.setUploadedAt(LocalDateTime.now());
+//            resume = resumeRepo.save(resume);
+//            System.out.println("Resume saved with ID: " + resume.getId());
+//
+//            //3. Call Python AI model for comprehensive analysis
+//            String aiResult = modelClient.parseResume(stored.toFile());
+//            System.out.println("Resume saved with ID: " + resume.getId());
+//
+//            //parse the result to ensure it's valid JSON
+//            try{
+//                objectMapper.readTree(aiResult);
+//                resume.setParsedJson(aiResult);
+//            } catch (Exception e) {
+//                //If not valid JSON wrap it
+//                Map<String, String> wrapped = Map.of("result", aiResult);
+//                resume.setParsedJson(objectMapper.writeValueAsString(wrapped));
+//            }
+//            resumeRepo.save(resume);
+//            System.out.println("=== RESUME UPLOAD COMPLETED SUCCESSFULLY ===");
+//            return ResponseEntity.ok(new ResumeUploadResponse(resume.getId(), resume.getParsedJson()));
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return ResponseEntity.internalServerError()
+//                    .body(Map.of("message", "Upload failed:" + e.getMessage()));
+//        }
+//    }
+
     @PostMapping("/upload")
     public ResponseEntity<?> uploadResume(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "userId", required = false) Long userId) {
         try {
             System.out.println("=== RESUME UPLOAD STARTED ===");
-            System.out.println("Filename: " + file.getOriginalFilename());
-            System.out.println("Size: " + file.getSize());
-            System.out.println("UserID: " + userId);
-            //validate user
-            if(userId == null) {
-                System.out.println("ERROR: User ID is null");
+
+            if (userId == null) {
                 return ResponseEntity.badRequest().body(Map.of("message", "User ID is required"));
             }
+
             Optional<User> userOpt = userRepo.findById(userId);
             if (userOpt.isEmpty()) {
-                System.out.println("ERROR: User not found with ID: " + userId);
                 return ResponseEntity.badRequest().body(Map.of("message", "User not found"));
             }
 
-            //1. Store file
-            Path stored = fileStorage.storeFile(file,"resumes");
-            System.out.println("File stored at: " + stored.toString());
+            String tempDir = System.getProperty("java.io.tmpdir");
+//            File tempFile = File.createTempFile("resume_", ".pdf");
+            File tempFile = new File(tempDir, "resume_" + System.currentTimeMillis() + ".pdf");
+            file.transferTo(tempFile);
+            System.out.println("Temp file created: " + tempFile.getAbsolutePath());
 
-            //2. Save resume metadata
             Resume resume = new Resume();
             resume.setFilename(file.getOriginalFilename());
-            resume.setFilepath(stored.toString());
+
+
             resume.setUserId(userId);
             resume.setUploadedAt(LocalDateTime.now());
             resume = resumeRepo.save(resume);
-            System.out.println("Resume saved with ID: " + resume.getId());
 
-            //3. Call Python AI model for comprehensive analysis
-            String aiResult = modelClient.parseResume(stored.toFile());
-            System.out.println("Resume saved with ID: " + resume.getId());
-
-            //parse the result to ensure it's valid JSON
-            try{
-                objectMapper.readTree(aiResult);
-                resume.setParsedJson(aiResult);
-            } catch (Exception e) {
-                //If not valid JSON wrap it
-                Map<String, String> wrapped = Map.of("result", aiResult);
-                resume.setParsedJson(objectMapper.writeValueAsString(wrapped));
-            }
+            // Call Python AI model
+            String aiResult = modelClient.parseResume(tempFile);
+            resume.setParsedJson(aiResult);
             resumeRepo.save(resume);
-            System.out.println("=== RESUME UPLOAD COMPLETED SUCCESSFULLY ===");
+
             return ResponseEntity.ok(new ResumeUploadResponse(resume.getId(), resume.getParsedJson()));
+
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError()
-                    .body(Map.of("message", "Upload failed:" + e.getMessage()));
+                    .body(Map.of("message", "Upload failed: " + e.getMessage()));
         }
     }
+
     @PostMapping("/match-job")
     public ResponseEntity<?> matchResumeWithJob(
             @RequestParam("resumeId") Long resumeId,

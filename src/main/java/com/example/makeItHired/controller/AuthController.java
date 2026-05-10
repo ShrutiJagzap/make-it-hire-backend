@@ -9,6 +9,7 @@ import com.example.makeItHired.repository.UserRepository;
 import com.example.makeItHired.service.AuthService;
 
 
+import com.example.makeItHired.service.FirebaseStorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -34,6 +35,9 @@ import java.util.Optional;
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*")
 public class AuthController {
+
+    @Autowired
+    private FirebaseStorageService firebaseStorageService;
 
     private final AuthService authService;
 
@@ -82,15 +86,6 @@ public class AuthController {
             if(!passwordEncoder.matches(req.getPassword(),user.getPassword())) {
                 return ResponseEntity.badRequest().body(Map.of("message","Invalid password"));
             }
-//            return ResponseEntity.ok(
-//                    Map.of(
-//                            "id", user.getId(),
-//                            "fullName", user.getFullName(),
-//                            "email", user.getEmail(),
-//                            "role", user.getRole().name(),
-//                            "idPhotoUrl", user.getIdPhotoUrl()
-//                            )
-//            );
 
             Map<String, Object> response = new HashMap<>();
             response.put("id", user.getId());
@@ -144,32 +139,120 @@ public class AuthController {
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "/").body(resource);
     }
 
+//    @PostMapping("/profile/upload/{id}")
+//    public ResponseEntity<?> uploadProfileImage(@PathVariable Long id, @RequestParam("file")MultipartFile file) {
+//        try {
+//            Optional<User> optionalUser = userRepository.findById(id);
+//
+//            if (optionalUser.isEmpty()) {
+//                return ResponseEntity.badRequest().body(Map.of("message", "User Not Found"));
+//            }
+//
+//            User user = optionalUser.get();
+//
+//            String uploadDir = "uploads/";
+//            File dir = new File(uploadDir);
+//            if (!dir.exists()) dir.mkdirs();
+//
+//            String fileName =System.currentTimeMillis() + "_" + file.getOriginalFilename();
+//            Path filePath = Paths.get(uploadDir + fileName);
+//
+//            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+//
+//            user.setPhotoUrl(fileName);
+//            userRepository.save(user);
+//
+//            return ResponseEntity.ok(Map.of("photoUrl", fileName));
+//        } catch (Exception e) {
+//            return ResponseEntity.internalServerError().body(Map.of("message", "upload Failed"));
+//        }
+//    }
+
     @PostMapping("/profile/upload/{id}")
-    public ResponseEntity<?> uploadProfileImage(@PathVariable Long id, @RequestParam("file")MultipartFile file) {
+    public ResponseEntity<?> uploadProfileImage(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
         try {
             Optional<User> optionalUser = userRepository.findById(id);
-
             if (optionalUser.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("message", "User Not Found"));
             }
 
             User user = optionalUser.get();
 
-            String uploadDir = "uploads/";
-            File dir = new File(uploadDir);
-            if (!dir.exists()) dir.mkdirs();
+            // Try Firebase first
+            String firebaseUrl = firebaseStorageService.uploadFile(file, "profile_photos", id);
 
-            String fileName =System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            Path filePath = Paths.get(uploadDir + fileName);
+            if (firebaseUrl != null) {
+                // Store Firebase URL in database
+                user.setPhotoUrl(firebaseUrl);
+                userRepository.save(user);
+                return ResponseEntity.ok(Map.of("photoUrl", firebaseUrl, "storage", "firebase"));
+            } else {
+                // Fallback to local storage
+                String uploadDir = "uploads/";
+                File dir = new File(uploadDir);
+                if (!dir.exists()) dir.mkdirs();
 
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+                String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+                Path filePath = Paths.get(uploadDir + fileName);
+                Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            user.setPhotoUrl(fileName);
-            userRepository.save(user);
-
-            return ResponseEntity.ok(Map.of("photoUrl", fileName));
+                user.setPhotoUrl(fileName);
+                userRepository.save(user);
+                return ResponseEntity.ok(Map.of("photoUrl", fileName, "storage", "local"));
+            }
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("message", "upload Failed"));
+            return ResponseEntity.internalServerError().body(Map.of("message", "Upload Failed: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/upload-id-photo")
+    public ResponseEntity<?> uploadIdPhoto(
+            @RequestParam("userId") Long userId,
+            @RequestParam("file") MultipartFile file) {
+        try {
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "User not found"));
+            }
+            User user = userOpt.get();
+
+            // Try Firebase first
+            String firebaseUrl = firebaseStorageService.uploadFile(file, "id_photos", userId);
+
+            if (firebaseUrl != null) {
+                user.setIdPhotoUrl(firebaseUrl);
+                userRepository.save(user);
+                return ResponseEntity.ok(Map.of(
+                        "message", "ID photo uploaded to Firebase successfully",
+                        "photoUrl", firebaseUrl,
+                        "userId", userId,
+                        "storage", "firebase"
+                ));
+            } else {
+                // Fallback to local storage
+                String uploadDir = "uploads/id_photos/";
+                File dir = new File(uploadDir);
+                if (!dir.exists()) dir.mkdirs();
+
+                String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+                Path filePath = Paths.get(uploadDir + fileName);
+                Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+                user.setIdPhotoUrl(fileName);
+                userRepository.save(user);
+                return ResponseEntity.ok(Map.of(
+                        "message", "ID photo uploaded locally",
+                        "photoUrl", fileName,
+                        "userId", userId,
+                        "storage", "local"
+                ));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("message", "Upload failed: " + e.getMessage()));
         }
     }
 
@@ -237,35 +320,35 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/upload-id-photo")
-    public ResponseEntity<?> uploadIdPhoto(
-            @RequestParam("userId") Long userId,
-            @RequestParam("file") MultipartFile file) {
-        try {
-            Optional<User> userOpt = userRepository.findById(userId);
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "User not found"));
-            }
-            User user = userOpt.get();
-
-            String uploadDir = "uploads/id_photos/";
-            File dir = new File(uploadDir);
-            if (!dir.exists()) dir.mkdirs();
-
-            String fileName = System.currentTimeMillis() + "_ " + file.getOriginalFilename();
-            Path filePath = Paths.get(uploadDir + fileName);
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-            user.setIdPhotoUrl(fileName);
-            userRepository.save(user);
-
-            return ResponseEntity.ok(Map.of("message","Id photo uploaded successfully", "photoUrl", fileName, "userId", userId));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("message", "Upload failed:" + e.getMessage()));
-        }
-    }
+//    @PostMapping("/upload-id-photo")
+//    public ResponseEntity<?> uploadIdPhoto(
+//            @RequestParam("userId") Long userId,
+//            @RequestParam("file") MultipartFile file) {
+//        try {
+//            Optional<User> userOpt = userRepository.findById(userId);
+//            if (userOpt.isEmpty()) {
+//                return ResponseEntity.badRequest().body(Map.of("message", "User not found"));
+//            }
+//            User user = userOpt.get();
+//
+//            String uploadDir = "uploads/id_photos/";
+//            File dir = new File(uploadDir);
+//            if (!dir.exists()) dir.mkdirs();
+//
+//            String fileName = System.currentTimeMillis() + "_ " + file.getOriginalFilename();
+//            Path filePath = Paths.get(uploadDir + fileName);
+//            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+//
+//            user.setIdPhotoUrl(fileName);
+//            userRepository.save(user);
+//
+//            return ResponseEntity.ok(Map.of("message","Id photo uploaded successfully", "photoUrl", fileName, "userId", userId));
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return ResponseEntity.internalServerError()
+//                    .body(Map.of("message", "Upload failed:" + e.getMessage()));
+//        }
+//    }
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getUser(@PathVariable Long userId) {

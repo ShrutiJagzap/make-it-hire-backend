@@ -17,6 +17,9 @@ target/
 .idea
 *.iws
 *.iml
+.vscode/
+.settings/
+
 *.ipr
 *.class
 *.jar
@@ -46,6 +49,16 @@ logs/
 
 # Env files (future use)
 .env
+*.env.local
 
 # Uploads (if you store resumes/videos locally)
 uploads/
+*.pid
+*.tmp
+
+# Application properties with secrets (but keep the template)
+application-prod-local.yml
+application-dev-local.yml
+
+# Test reports
+test-output/

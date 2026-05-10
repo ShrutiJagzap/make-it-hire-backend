@@ -14,15 +14,26 @@ import java.util.UUID;
 
 @Service
 public class FileStorageService {
-    @Value("${app.upload.dir}")
+    @Value("${app.upload.dir:./uploads}")
     private String uploadDir;
 
     public Path storeFile(MultipartFile file, String subFolder) throws IOException {
-        Path dir = Paths.get(uploadDir,subFolder);
-        Files.createDirectories(dir);
-        String filename = UUID.randomUUID() + "_" + StringUtils.cleanPath(file.getOriginalFilename());
-        Path target = dir.resolve(filename);
-        Files.copy(file.getInputStream(),target, StandardCopyOption.REPLACE_EXISTING);
-        return target;
+        Path dir = Paths.get(uploadDir).toAbsolutePath().resolve(subFolder);
+        if (!Files.exists(dir)) {
+            Files.createDirectories(dir);
+            System.out.println("Created directory:" + dir.toString());
+        }
+        // Generate unique filename
+        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
+        String extension = "";
+        if (originalFilename.contains(".")) {
+            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        String filename = UUID.randomUUID().toString() + extension;
+
+        Path targetPath = dir.resolve(filename);
+        Files.copy(file.getInputStream(),targetPath, StandardCopyOption.REPLACE_EXISTING);
+        System.out.println("File stored at:" + targetPath.toString());
+        return targetPath;
     }
 }

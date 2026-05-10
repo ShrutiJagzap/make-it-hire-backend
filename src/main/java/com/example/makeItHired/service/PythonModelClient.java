@@ -3,6 +3,7 @@ package com.example.makeItHired.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 
 import java.io.File;
@@ -19,20 +21,39 @@ import java.util.*;
 @Service
 public class PythonModelClient {
 
-    private final String PYTHON_SERVICE_URL = "http://localhost:8000"; // Change to your Python server IP
+    private final WebClient webClient;
+
+    @Value("${models.resume.parse.url}")
+    private String resumeParseUrl;
+
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
     public PythonModelClient() {
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
+        this.webClient = WebClient.builder().build();
     }
+
+    private String getPythonServiceUrl() {
+        if (resumeParseUrl != null && !resumeParseUrl.isEmpty()) {
+            // Extract base URL from the parse URL (remove /parse)
+            if (resumeParseUrl.contains("/parse")) {
+                return resumeParseUrl.replace("/parse", "");
+            }
+            return resumeParseUrl;
+        }
+        // Fallback for local development
+        return "http://localhost:8000";
+    }
+
 
     public String parseResume(File file) {
         try {
             System.out.println("=== PYTHON MODEL CLIENT ===");
             System.out.println("Sending file to Python service: " + file.getAbsolutePath());
-            System.out.println("Python service URL: " + PYTHON_SERVICE_URL + "/parse-resume");
+            String pythonUrl = getPythonServiceUrl();
+            System.out.println("Python service URL: " + pythonUrl + "/parse-resume");
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
@@ -41,7 +62,7 @@ public class PythonModelClient {
 
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-            String url = PYTHON_SERVICE_URL + "/parse-resume";
+            String url = pythonUrl + "/parse-resume";
             ResponseEntity<String> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -97,7 +118,7 @@ public class PythonModelClient {
 
             HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(body, headers);
 
-            String url = PYTHON_SERVICE_URL + "/match-job";
+            String url = getPythonServiceUrl() + "/match-job";
             ResponseEntity<String> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -128,7 +149,7 @@ public class PythonModelClient {
 
             HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(body, headers);
 
-            String url = PYTHON_SERVICE_URL + "/verify-identity";
+            String url = getPythonServiceUrl() + "/verify-identity";
             ResponseEntity<String> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -159,7 +180,7 @@ public class PythonModelClient {
 
             HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(body, headers);
 
-            String url = PYTHON_SERVICE_URL + "/analyze-video";
+            String url = getPythonServiceUrl() + "/analyze-video";
             ResponseEntity<String> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -190,7 +211,7 @@ public class PythonModelClient {
 
             HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(body, headers);
 
-            String url = PYTHON_SERVICE_URL + "/generate-questions";
+            String url = getPythonServiceUrl() + "/generate-questions";
             ResponseEntity<String> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -221,7 +242,7 @@ public class PythonModelClient {
 
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-            String url = PYTHON_SERVICE_URL + "/evaluate-answer";
+            String url = getPythonServiceUrl() + "/evaluate-answer";
             ResponseEntity<String> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -252,7 +273,7 @@ public class PythonModelClient {
 
             HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(body, headers);
 
-            String url = PYTHON_SERVICE_URL + "/generate-report";
+            String url = getPythonServiceUrl() + "/generate-report";
             ResponseEntity<String> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -273,7 +294,7 @@ public class PythonModelClient {
 
     public List<Map<String, Object>> getAllReports() {
         try {
-            String url = PYTHON_SERVICE_URL + "/reports";
+            String url = getPythonServiceUrl() + "/reports";
             ResponseEntity<String> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
@@ -292,7 +313,7 @@ public class PythonModelClient {
 
     public Map<String, Object> getReport(String reportId) {
         try {
-            String url = PYTHON_SERVICE_URL + "/report/" + reportId;
+            String url = getPythonServiceUrl() + "/report/" + reportId;
             ResponseEntity<String> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
