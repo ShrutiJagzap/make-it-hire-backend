@@ -1,0 +1,55 @@
+spring:
+  datasource:
+    url:  ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          lob:
+            non_contextual_creation: true
+    show-sql: false
+
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 500MB
+
+  web:
+    resources:
+      static-locations: file:/tmp/uploads/
+
+server:
+  port: ${PORT:8081}
+  error:
+    include-message: always
+
+app:
+  upload:
+    dir: /tmp/uploads
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:5173}
+
+models:
+  resume:
+    parse:
+      url: ${AI_MODEL_URL}/parse
+  video:
+    analyze:
+      url: ${AI_MODEL_URL}/analyze_video
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration-ms: 86400000
+
+# Logging for production
+logging:
+  level:
+    com.example.makeItHired: INFO
+    org.springframework.web: WARN

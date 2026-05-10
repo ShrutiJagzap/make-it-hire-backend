@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/make_it_hired
+    username: root
+    password: m@hadev2005
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+    show-sql: true
+
+app:
+  frontend:
+    url: http://localhost:5173
+
+models:
+  resume:
+    parse:
+      url: http://localhost:8000/parse
+  video:
+    analyze:
+      url: http://localhost:8000/analyze_video
+
+logging:
+  level:
+    com.example.makeItHired: DEBUG
