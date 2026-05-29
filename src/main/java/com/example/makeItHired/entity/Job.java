@@ -17,9 +17,12 @@ public class Job {
     private String jobTitle;
     private String companyName;
 
-    @Column(length = 2000)
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String skills;
     private String experience;
     private String location;
