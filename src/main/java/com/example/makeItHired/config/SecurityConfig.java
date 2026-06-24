@@ -45,7 +45,7 @@ public class SecurityConfig {
         // Allow your frontend URLs
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:5173",
-                "https://make-it-hire-frontend.onrender.comfix"
+                "https://make-it-hire-frontend.onrender.com"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
