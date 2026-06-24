@@ -1,8 +1,8 @@
 spring:
   datasource:
     url:  ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+#    username: ${DB_USERNAME}
+#    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -44,6 +44,12 @@ models:
   video:
     analyze:
       url: ${AI_MODEL_URL}/analyze_video
+
+# Gemini API
+gemini:
+  api:
+    key: ${GEMINI_API_KEY}
+
 
 jwt:
   secret: ${JWT_SECRET}
