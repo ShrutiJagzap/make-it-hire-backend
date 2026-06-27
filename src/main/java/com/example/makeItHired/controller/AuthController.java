@@ -136,7 +136,11 @@ public class AuthController {
         Path filePath = Paths.get("uploads/").resolve(fileName);
         Resource resource = new UrlResource(filePath.toUri());
 
-        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "/").body(resource);
+        if (!resource.exists() || !resource.isReadable()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"").body(resource);
     }
 
     @PostMapping("/profile/upload/{id}")
