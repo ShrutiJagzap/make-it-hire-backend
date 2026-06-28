@@ -88,11 +88,12 @@ public class PythonModelClient {
                             map.put("warning", "Resume score was missing from AI response; using fallback.");
                             if (!map.containsKey("score_breakdown")) {
                                 Map<String, Object> breakdown = new HashMap<>();
-                                breakdown.put("contact_info", 10);
-                                breakdown.put("education", 10);
+                                breakdown.put("contact_info", 5);
+                                breakdown.put("education", 8);
                                 breakdown.put("experience", 10);
-                                breakdown.put("skills", 10);
-                                breakdown.put("formatting_length", 10);
+                                breakdown.put("skills", 12);
+                                breakdown.put("projects", 8);
+                                breakdown.put("formatting_length", 7);
                                 map.put("score_breakdown", breakdown);
                             }
                             responseBody = objectMapper.writeValueAsString(map);
@@ -110,11 +111,12 @@ public class PythonModelClient {
                                 map.put("warning", "Resume score calculated as 0; using fallback default.");
                                 if (!map.containsKey("score_breakdown")) {
                                     Map<String, Object> breakdown = new HashMap<>();
-                                    breakdown.put("contact_info", 10);
-                                    breakdown.put("education", 10);
+                                    breakdown.put("contact_info", 5);
+                                    breakdown.put("education", 8);
                                     breakdown.put("experience", 10);
-                                    breakdown.put("skills", 10);
-                                    breakdown.put("formatting_length", 10);
+                                    breakdown.put("skills", 12);
+                                    breakdown.put("projects", 8);
+                                    breakdown.put("formatting_length", 7);
                                     map.put("score_breakdown", breakdown);
                                 }
                                 responseBody = objectMapper.writeValueAsString(map);
@@ -157,17 +159,19 @@ public class PythonModelClient {
             }
             fallbackScore = Math.min(85, fallbackScore);
             
-            int contact = (int) (fallbackScore * 0.20);
-            int education = (int) (fallbackScore * 0.25);
+            int contact = (int) (fallbackScore * 0.10);
+            int education = (int) (fallbackScore * 0.15);
             int experience = (int) (fallbackScore * 0.20);
-            int skills = (int) (fallbackScore * 0.20);
-            int formatting = fallbackScore - (contact + education + experience + skills);
+            int skills = (int) (fallbackScore * 0.25);
+            int projects = (int) (fallbackScore * 0.15);
+            int formatting = fallbackScore - (contact + education + experience + skills + projects);
             
             Map<String, Object> breakdown = new HashMap<>();
             breakdown.put("contact_info", contact);
             breakdown.put("education", education);
             breakdown.put("experience", experience);
             breakdown.put("skills", skills);
+            breakdown.put("projects", projects);
             breakdown.put("formatting_length", formatting);
             
             Map<String, Object> fallback = new HashMap<>();
@@ -187,7 +191,7 @@ public class PythonModelClient {
             
             return objectMapper.writeValueAsString(fallback);
         } catch (Exception e) {
-            return "{\"resume_score\":60,\"score_breakdown\":{\"contact_info\":12,\"education\":15,\"experience\":12,\"skills\":12,\"formatting_length\":9},\"warning\":\"Local Fallback Mode Activated\"}";
+            return "{\"resume_score\":60,\"score_breakdown\":{\"contact_info\":6,\"education\":9,\"experience\":12,\"skills\":15,\"projects\":9,\"formatting_length\":9},\"warning\":\"Local Fallback Mode Activated\"}";
         }
     }
 
