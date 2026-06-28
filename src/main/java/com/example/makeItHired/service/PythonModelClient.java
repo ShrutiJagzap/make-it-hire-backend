@@ -23,7 +23,7 @@ public class PythonModelClient {
 
     private final WebClient webClient;
 
-    @Value("${models.resume.parse.url}")
+    @Value("${models.resume.parse.url:http://localhost:8000/parse-resume}")
     private String resumeParseUrl;
 
     private final RestTemplate restTemplate;
