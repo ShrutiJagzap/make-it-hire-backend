@@ -8,6 +8,8 @@ import com.example.makeItHired.repository.UserRepository;
 import com.example.makeItHired.service.FileStorageService;
 import com.example.makeItHired.service.FirebaseStorageService;
 import com.example.makeItHired.service.PythonModelClient;
+import com.example.makeItHired.entity.Role;
+import com.example.makeItHired.service.NotificationService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,12 +39,14 @@ public class ResumeController {
     private final UserRepository userRepo;
     private final PythonModelClient modelClient;
     private final ObjectMapper objectMapper;
+    private final NotificationService notificationService;
 
-    public ResumeController(FileStorageService fileStorage, ResumeRepository resumeRepo, UserRepository userRepo, PythonModelClient modelClient) {
+    public ResumeController(FileStorageService fileStorage, ResumeRepository resumeRepo, UserRepository userRepo, PythonModelClient modelClient, NotificationService notificationService) {
         this.fileStorage = fileStorage;
         this.resumeRepo = resumeRepo;
         this.userRepo = userRepo;
         this.modelClient = modelClient;
+        this.notificationService = notificationService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -79,7 +83,32 @@ public class ResumeController {
             // Call Python AI model
             String aiResult = modelClient.parseResume(tempFile);
             resume.setParsedJson(aiResult);
-            resumeRepo.save(resume);
+            resume = resumeRepo.save(resume);
+
+            // Trigger notifications
+            try {
+                User user = userOpt.get();
+                // Send candidate notification
+                notificationService.createNotification(
+                    userId,
+                    null,
+                    "Resume Uploaded Successfully!",
+                    "Your resume \"" + file.getOriginalFilename() + "\" was uploaded and analyzed.",
+                    "FEEDBACK",
+                    "/user-dashboard"
+                );
+                // Send HR/Admin notification
+                notificationService.createNotification(
+                    null,
+                    Role.ADMIN,
+                    "New Candidate Application",
+                    user.getFullName() + " uploaded a new resume.",
+                    "APPLICATION",
+                    "/admin-dashboard"
+                );
+            } catch (Exception notifEx) {
+                System.err.println("Failed to trigger upload notifications: " + notifEx.getMessage());
+            }
 
             return ResponseEntity.ok(new ResumeUploadResponse(resume.getId(), resume.getParsedJson()));
 
@@ -115,6 +144,21 @@ public class ResumeController {
             }
             //Call AI service to match with job
             Map<String,Object> result = modelClient.matchResumeWithJob(sessionId, jobDescription);
+
+            // Trigger match notification
+            try {
+                notificationService.createNotification(
+                    resume.getUserId(),
+                    null,
+                    "Resume Match Complete!",
+                    "Your matching result for job description is complete.",
+                    "FEEDBACK",
+                    "/user-dashboard"
+                );
+            } catch (Exception notifEx) {
+                System.err.println("Failed to trigger match notification: " + notifEx.getMessage());
+            }
+
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             e.printStackTrace();

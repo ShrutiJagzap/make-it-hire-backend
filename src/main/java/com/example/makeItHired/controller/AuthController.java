@@ -7,6 +7,7 @@ import com.example.makeItHired.entity.Role;
 import com.example.makeItHired.entity.User;
 import com.example.makeItHired.repository.UserRepository;
 import com.example.makeItHired.service.AuthService;
+import com.example.makeItHired.service.NotificationService;
 
 
 import com.example.makeItHired.service.FirebaseStorageService;
@@ -43,11 +44,13 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NotificationService notificationService;
 
-    public AuthController(AuthService authService, UserRepository userRepository, PasswordEncoder passwordEncoder ){
+    public AuthController(AuthService authService, UserRepository userRepository, PasswordEncoder passwordEncoder, NotificationService notificationService){
         this.authService = authService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.notificationService = notificationService;
     }
 
     @PostMapping("/register")
@@ -69,6 +72,18 @@ public class AuthController {
             }
 
             userRepository.save(user);
+            try {
+                notificationService.createNotification(
+                    user.getId(),
+                    null,
+                    "Welcome to Make It Hire!",
+                    "Start by uploading your resume to find your dream job.",
+                    "SYSTEM",
+                    "/user-dashboard"
+                );
+            } catch (Exception notifEx) {
+                System.err.println("Failed to trigger registration notification: " + notifEx.getMessage());
+            }
             return ResponseEntity.badRequest().body(Map.of("message","Registration successfully"));
         } catch (RuntimeException ex) {
             return ResponseEntity.badRequest().body(java.util.Map.of("message", ex.getMessage()));
@@ -218,6 +233,18 @@ public class AuthController {
 
             userRepository.save(user);
             System.out.println("User registered successfully: " + email);
+            try {
+                notificationService.createNotification(
+                    user.getId(),
+                    null,
+                    "Welcome to Make It Hire!",
+                    "Start by uploading your resume to find your dream job.",
+                    "SYSTEM",
+                    "/user-dashboard"
+                );
+            } catch (Exception notifEx) {
+                System.err.println("Failed to trigger registration notification: " + notifEx.getMessage());
+            }
 
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Registration successful");
