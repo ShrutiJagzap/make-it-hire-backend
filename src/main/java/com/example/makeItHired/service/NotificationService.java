@@ -8,6 +8,7 @@ import com.example.makeItHired.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,12 +37,29 @@ public class NotificationService {
     }
 
     public List<Notification> getNotificationsForUser(Long userId) {
+        List<Notification> allNotifs = new ArrayList<>();
+        
+        // 1. Fetch user-specific notifications
+        allNotifs.addAll(notificationRepository.findByUserIdOrderByCreatedAtDesc(userId));
+        
+        // 2. Fetch role-based notifications
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isPresent()) {
             Role role = userOpt.get().getRole();
-            return notificationRepository.findByUserIdOrRecipientRoleOrderByCreatedAtDesc(userId, role);
+            if (role != null) {
+                allNotifs.addAll(notificationRepository.findByRecipientRoleOrderByCreatedAtDesc(role));
+            }
         }
-        return notificationRepository.findByUserIdOrRecipientRoleOrderByCreatedAtDesc(userId, null);
+        
+        // 3. Sort chronologically descending
+        allNotifs.sort((n1, n2) -> {
+            if (n1.getCreatedAt() == null && n2.getCreatedAt() == null) return 0;
+            if (n1.getCreatedAt() == null) return 1;
+            if (n2.getCreatedAt() == null) return -1;
+            return n2.getCreatedAt().compareTo(n1.getCreatedAt());
+        });
+        
+        return allNotifs;
     }
 
     @Transactional

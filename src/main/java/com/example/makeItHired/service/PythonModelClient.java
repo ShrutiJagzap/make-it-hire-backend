@@ -37,13 +37,18 @@ public class PythonModelClient {
 
     private String getPythonServiceUrl() {
         if (resumeParseUrl != null && !resumeParseUrl.isEmpty()) {
-            // Extract base URL from the parse URL (remove /parse)
-            if (resumeParseUrl.contains("/parse")) {
-                return resumeParseUrl.replace("/parse", "");
+            try {
+                java.net.URI uri = new java.net.URI(resumeParseUrl);
+                String scheme = uri.getScheme();
+                String authority = uri.getAuthority();
+                if (scheme != null && authority != null) {
+                    return scheme + "://" + authority;
+                }
+            } catch (Exception e) {
+                System.err.println("Error parsing resumeParseUrl: " + e.getMessage());
             }
             return resumeParseUrl;
         }
-        // Fallback for local development
         return "http://localhost:8000";
     }
 
