@@ -456,8 +456,12 @@ public class PythonModelClient {
     public PythonModelClient() {
         this.restTemplate = createRestTemplateWithSSL();
         this.objectMapper = new ObjectMapper();
+    }
+
+    @javax.annotation.PostConstruct
+    public void init() {
         System.out.println("=== PYTHON MODEL CLIENT INITIALIZED ===");
-        System.out.println("Resume Parse URL: " + resumeParseUrl);
+        System.out.println("Resume Parse URL (injected): " + resumeParseUrl);
     }
 
     /**
@@ -499,8 +503,19 @@ public class PythonModelClient {
 
     private String getPythonServiceUrl() {
         if (resumeParseUrl != null && !resumeParseUrl.isEmpty()) {
+            // Trim whitespace and remove quotes if present
+            String url = resumeParseUrl.trim();
+            if (url.startsWith("\"") && url.endsWith("\"")) {
+                url = url.substring(1, url.length() - 1).trim();
+            }
+            if (url.startsWith("'") && url.endsWith("'")) {
+                url = url.substring(1, url.length() - 1).trim();
+            }
+
             // Remove trailing slash if present
-            String url = resumeParseUrl.endsWith("/") ? resumeParseUrl.substring(0, resumeParseUrl.length() - 1) : resumeParseUrl;
+            if (url.endsWith("/")) {
+                url = url.substring(0, url.length() - 1);
+            }
 
             // If the URL contains "/parse", extract the base
             if (url.contains("/parse")) {

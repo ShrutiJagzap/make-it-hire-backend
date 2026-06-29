@@ -269,6 +269,50 @@ public class ResumeController {
         }
     }
 
+    @PostMapping("/interview/complete")
+    public ResponseEntity<?> completeInterview(@RequestBody Map<String, Object> request) {
+        try {
+            Long userId = null;
+            if (request.get("userId") != null) {
+                userId = Long.parseLong(request.get("userId").toString());
+            }
+            String sessionId = (String) request.get("sessionId");
+            String jobTitle = (String) request.get("jobTitle");
+            String candidateName = (String) request.get("candidateName");
+            Double overallScore = 0.0;
+            if (request.get("overallScore") != null) {
+                overallScore = Double.parseDouble(request.get("overallScore").toString());
+            }
+
+            // Create notification for Candidate
+            if (userId != null) {
+                notificationService.createNotification(
+                    userId,
+                    null,
+                    "Interview Completed Successfully!",
+                    "Your video interview for \"" + jobTitle + "\" has been completed. Overall score: " + overallScore + "%.",
+                    "FEEDBACK",
+                    "/user-dashboard"
+                );
+            }
+
+            // Create notification for HR/Admin
+            notificationService.createNotification(
+                null,
+                Role.ADMIN,
+                "Candidate Interview Completed",
+                candidateName + " has completed the video interview for \"" + jobTitle + "\" with a score of " + overallScore + "%.",
+                "APPLICATION",
+                "/admin-dashboard"
+            );
+
+            return ResponseEntity.ok(Map.of("message", "Interview completion notifications generated."));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(Map.of("message", "Failed to process interview completion: " + e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{resumeId}")
     public ResponseEntity<?> deleteResume(@PathVariable Long resumeId) {
         try {
