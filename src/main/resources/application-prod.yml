@@ -43,10 +43,10 @@ app:
 models:
   resume:
     parse:
-      url: ${AI_MODEL_URL}/parse
+      url: ${AI_MODEL_URL:http://localhost:8000}/parse-resume
   video:
     analyze:
-      url: ${AI_MODEL_URL}/analyze_video
+      url: ${AI_MODEL_URL:http://localhost:8000}/analyze_video
 
 # Gemini API
 gemini:
